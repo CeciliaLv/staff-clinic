@@ -6,24 +6,55 @@ import 'dotenv/config';
 import type { Drug, InboundRecord, OutboundRecord, DiscardRecord, AppParams } from '../types.js';
 
 // ---------- 数据库路径 ----------
-// 优先使用环境变量，否则相对于项目根目录
 const ROOT = process.cwd();
-const DB_PATH = process.env.DB_PATH || path.join(ROOT, 'data/clinic.db');
+const IS_RENDER = process.env.RENDER === 'true';
+
+// Render 环境使用 /data 目录（可写），否则使用 ./data
+const getDbPath = () => {
+  if (process.env.DB_PATH) return process.env.DB_PATH;
+  if (IS_RENDER) {
+    const renderDataDir = '/data';
+    try {
+      fs.mkdirSync(renderDataDir, { recursive: true });
+      return path.join(renderDataDir, 'clinic.db');
+    } catch {
+      return path.join(ROOT, 'data/clinic.db');
+    }
+  }
+  return path.join(ROOT, 'data/clinic.db');
+};
+
+const DB_PATH = getDbPath();
 const DB_DIR = path.dirname(DB_PATH);
 
-// 确保数据目录存在
 if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
 
 // ---------- 打开数据库 ----------
 const db = new Database(DB_PATH);
-db.pragma('foreign_keys = ON');   // 启用外键约束
-db.pragma('synchronous = FULL');  // 完全同步模式，确保数据安全
+db.pragma('foreign_keys = ON');
+db.pragma('synchronous = FULL');
 
 // ---------- 初始化 Schema ----------
-const schemaPath = path.join(ROOT, 'src/db/schema.sql');
-const schema = fs.readFileSync(schemaPath, 'utf8');
+// 尝试多个位置查找 schema.sql（适配开发和生产环境）
+const findSchema = (): string => {
+  const candidates = [
+    path.join(ROOT, 'src/db/schema.sql'),
+    path.join(ROOT, 'dist/src/db/schema.sql'),
+    path.join(ROOT, 'schema.sql'),
+    path.join(__dirname, 'schema.sql'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      console.log(`[DB] 找到 schema: ${p}`);
+      return fs.readFileSync(p, 'utf8');
+    }
+  }
+  throw new Error('无法找到 schema.sql 文件');
+};
+
+const schema = findSchema();
 db.exec(schema);
 
 // ---------- 列别名映射（snake_case → camelCase） ----------

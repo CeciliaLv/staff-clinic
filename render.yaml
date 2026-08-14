@@ -25,4 +25,8 @@ services:
       - key: BCRYPT_ROUNDS
         value: 10
       - key: DB_PATH
-        value: ./data/clinic.db
+        value: /data/clinic.db
+      - key: RENDER
+        value: "true"
+      - key: NODE_VERSION
+        value: "20"
