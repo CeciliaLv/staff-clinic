@@ -4,8 +4,8 @@ services:
     name: staff-clinic
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: npm run render-build
+    startCommand: node dist/server.cjs
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
@@ -23,3 +23,5 @@ services:
         value: Admin@2026
       - key: BCRYPT_ROUNDS
         value: 10
+      - key: NODE_VERSION
+        value: "20"
