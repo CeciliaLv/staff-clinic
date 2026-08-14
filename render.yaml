@@ -1,5 +1,4 @@
 # Render 部署配置文件
-# 文档: https://render.com/docs/blueprint-spec
 services:
   - type: web
     name: staff-clinic
@@ -24,9 +23,3 @@ services:
         value: Admin@2026
       - key: BCRYPT_ROUNDS
         value: 10
-      - key: DB_PATH
-        value: /data/clinic.db
-      - key: RENDER
-        value: "true"
-      - key: NODE_VERSION
-        value: "20"

@@ -7,28 +7,22 @@ import type { Drug, InboundRecord, OutboundRecord, DiscardRecord, AppParams } fr
 
 // ---------- 数据库路径 ----------
 const ROOT = process.cwd();
-const IS_RENDER = process.env.RENDER === 'true';
 
-// Render 环境使用 /data 目录（可写），否则使用 ./data
 const getDbPath = () => {
   if (process.env.DB_PATH) return process.env.DB_PATH;
-  if (IS_RENDER) {
-    const renderDataDir = '/data';
-    try {
-      fs.mkdirSync(renderDataDir, { recursive: true });
-      return path.join(renderDataDir, 'clinic.db');
-    } catch {
-      return path.join(ROOT, 'data/clinic.db');
-    }
-  }
   return path.join(ROOT, 'data/clinic.db');
 };
 
 const DB_PATH = getDbPath();
 const DB_DIR = path.dirname(DB_PATH);
 
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.error('[DB] 无法创建数据目录:', DB_DIR, err instanceof Error ? err.message : err);
+  throw err;
 }
 
 // ---------- 打开数据库 ----------
