@@ -6,11 +6,34 @@ import 'dotenv/config';
 import type { Drug, InboundRecord, OutboundRecord, DiscardRecord, AppParams } from '../types.js';
 
 // ---------- 数据库路径 ----------
-const ROOT = process.cwd();
-
 const getDbPath = () => {
-  if (process.env.DB_PATH) return process.env.DB_PATH;
-  return path.join(ROOT, 'data/clinic.db');
+  const cwd = process.cwd();
+  
+  // 如果设置了 DB_PATH 环境变量，验证其有效性
+  if (process.env.DB_PATH) {
+    const envPath = process.env.DB_PATH;
+    // 绝对路径：检查目录是否可写
+    if (path.isAbsolute(envPath)) {
+      const dir = path.dirname(envPath);
+      try {
+        fs.accessSync(dir, fs.constants.W_OK);
+        console.log('[DB] 使用环境变量 DB_PATH:', envPath);
+        return envPath;
+      } catch {
+        console.warn('[DB] DB_PATH 目录不可写:', dir, '，使用默认路径');
+      }
+    } else {
+      // 相对路径：转换为绝对路径
+      const absPath = path.resolve(cwd, envPath);
+      console.log('[DB] 使用环境变量 DB_PATH (解析后):', absPath);
+      return absPath;
+    }
+  }
+  
+  // 默认路径：项目根目录下的 data/clinic.db
+  const dbPath = path.join(cwd, 'data/clinic.db');
+  console.log('[DB] 默认路径:', dbPath);
+  return dbPath;
 };
 
 const DB_PATH = getDbPath();
@@ -19,6 +42,7 @@ const DB_DIR = path.dirname(DB_PATH);
 try {
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
+    console.log('[DB] 创建数据目录:', DB_DIR);
   }
 } catch (err) {
   console.error('[DB] 无法创建数据目录:', DB_DIR, err instanceof Error ? err.message : err);
@@ -33,11 +57,13 @@ db.pragma('synchronous = FULL');
 // ---------- 初始化 Schema ----------
 // 尝试多个位置查找 schema.sql（适配开发和生产环境）
 const findSchema = (): string => {
+  const cwd = process.cwd();
   const candidates = [
-    path.join(ROOT, 'src/db/schema.sql'),
-    path.join(ROOT, 'dist/src/db/schema.sql'),
-    path.join(ROOT, 'schema.sql'),
+    path.join(cwd, 'src/db/schema.sql'),
+    path.join(cwd, 'dist/schema.sql'),
+    path.join(cwd, 'schema.sql'),
     path.join(__dirname, 'schema.sql'),
+    path.join(__dirname, '../schema.sql'),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) {
@@ -45,6 +71,7 @@ const findSchema = (): string => {
       return fs.readFileSync(p, 'utf8');
     }
   }
+  console.error('[DB] schema.sql 查找失败，搜索过的路径:', candidates);
   throw new Error('无法找到 schema.sql 文件');
 };
 
